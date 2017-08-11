@@ -1,3 +1,5 @@
+# coding=latin-1
+
 import mapnik, csv
 from wagecomplaints.settings import BASE_DIR
 from census.models import Zip
@@ -36,12 +38,12 @@ font_dir = BASE_DIR + '/graphics/fonts/'
 open_sans_cond_light = font_dir + 'OpenSansCondensed-Light.ttf' 
 open_sans_cond_bold = font_dir + 'OpenSansCondensed-Bold.ttf' 
 hed_size = 100
-font_size = 30
-source_size = 20
+font_size = 28
+source_size = 18
 
 hed = ImageFont.truetype(open_sans_cond_bold,hed_size)
 bold = ImageFont.truetype(open_sans_cond_bold,font_size)
-light = ImageFont.truetype(open_sans_cond_light,font_size)
+light = ImageFont.truetype(open_sans_cond_light,font_size,encoding='latin-1')
 source = ImageFont.truetype(open_sans_cond_light,source_size)
 
 space = 12
@@ -70,8 +72,11 @@ def make_map(z):
     layered_map = setup_base_layer(m)
     highlighted_map = setup_highlight_layer(layered_map,z.zip_code)
     map_path = export_map(highlighted_map,z.zip_code)
+    map_path_esp = export_map(highlighted_map,z.zip_code + '_esp')
     markup_map(map_path,z)
+    markup_map(map_path_esp,z,esp=True)
     optimize_map(map_path)
+    optimize_map(map_path_esp)
 
 
 def setup_map():
@@ -159,7 +164,7 @@ def export_map(m,zip_code):
 def rebox(box,pos):
     return mapnik.Box2d(box[0]-pos,box[1],box[2]-pos,box[3])
 
-def markup_map(path,zipcode):
+def markup_map(path,zipcode,esp=False):
     x=10
     y=50
     img = Image.open(path)
@@ -171,14 +176,14 @@ def markup_map(path,zipcode):
     y += size[1]*1.3
     
     # text writers return new coordinates
-    x,y = complaint_text(draw,(x,y),zipcode.complaint_set.all())
-    x,y = demo_text(draw,(x,y),zipcode)
-    x,y = poverty_text(draw,(x,y),zipcode)
-    source_text(draw,(x,y))
+    x,y = complaint_text(draw,(x,y),zipcode.complaint_set.all(),esp)
+    x,y = demo_text(draw,(x,y),zipcode,esp)
+    x,y = poverty_text(draw,(x,y),zipcode,esp)
+    source_text(draw,(x,y),esp)
     img.save(path,optimize=True)
 
 
-def complaint_text(draw,coords,num):
+def complaint_text(draw,coords,num,esp):
     # draws text and whitespace
     # returns new coords
     x = coords[0]
@@ -187,41 +192,75 @@ def complaint_text(draw,coords,num):
 
     num = str(len(num))
     
-    size = draw_and_size(draw,(x,y),'Workers living here',light)
+    if esp:
+        size = draw_and_size(draw,(x,y),'Trabajadores que vivían aquí ',light)
+    else:
+        size = draw_and_size(draw,(x,y),'Workers living here',light)
     y = add_a_line(y,size[1])
 
-    size = draw_and_size(draw,(x,y),'filed',light)
+    if esp:
+        size = draw_and_size(draw,(x,y),'presentaron',light)
+    else:
+        size = draw_and_size(draw,(x,y),'filed',light)
+
     offset += size[0] + space
     
     size = draw_and_size(draw,(offset,y),num,bold)
     offset = offset + size[0] + space
 
-    size = draw_and_size(draw,(offset,y),"wage complaints",light)
+    if esp:
+        size = draw_and_size(draw,(offset,y),"quejas de salarios",light)
+    else:
+        size = draw_and_size(draw,(offset,y),"wage complaints",light)
     y = add_a_line(y,size[1])
 
-    size = draw_and_size(draw,(x,y),"since 2014.",light)
+    if esp:
+        size = draw_and_size(draw,(x,y),"desde 2014.",light)
+    else:
+        size = draw_and_size(draw,(x,y),"since 2014.",light)
     y = add_a_line(y,size[1],multiple=2)
 
     return x,y
   
 
-def demo_text(draw,coords,zipcode):
+def demo_text(draw,coords,zipcode,esp):
     x = coords[0]
     y = coords[1]
-    text = "This ZIP code is "
+    if esp:
+        text = "Este código postal es " 
+    else:
+        text = "This ZIP code is "
     text_2 = ""
     text_3 = ""
     if zipcode.pct_blk >= 10 and zipcode.pct_hisp >=10:
         if zipcode.pct_blk > zipcode.pct_hisp:
-            text_2 += str(zipcode.pct_blk) + ' percent black'
-            text_3 += 'and ' + str(zipcode.pct_hisp) + ' percent Hispanic,'
+            if esp:
+                text_2 += str(zipcode.pct_blk) + ' por ciento afroamericano'
+            else:
+                text_2 += str(zipcode.pct_blk) + ' percent black'
+            if esp:
+                text_3 += 'y ' + str(zipcode.pct_hisp) + ' por ciento hispano,'
+            else:
+                text_3 += 'and ' + str(zipcode.pct_hisp) + ' percent Hispanic,'
         elif zipcode.pct_hisp >= zipcode.pct_blk:
-            text_2 += str(zipcode.pct_hisp) + ' percent Hispanic'
-            text_3 += 'and ' + str(zipcode.pct_blk) + ' percent black,'
+            if esp:
+                text_2 += str(zipcode.pct_hisp) + ' por ciento hispano'
+            else:
+                text_2 += str(zipcode.pct_hisp) + ' percent Hispanic'
+            if esp:
+                text_3 += 'y ' + str(zipcode.pct_blk) + ' por ciento afroamericano,'
+            else:
+                text_3 += 'and ' + str(zipcode.pct_blk) + ' percent black,'
     elif zipcode.pct_blk >= 10:
-        text_2 += str(zipcode.pct_blk) + ' percent black,'
+        if esp:
+            text_2 += str(zipcode.pct_blk) + ' por ciento afroamericano,'
+        else:
+            text_2 += str(zipcode.pct_blk) + ' percent black,'
     elif zipcode.pct_hisp >= 10:
-        text_2 += str(zipcode.pct_hisp) + ' percent Hispanic,'
+        if esp:
+            text_2 += str(zipcode.pct_hisp) + ' por ciento hispano,'
+        else:
+            text_2 += str(zipcode.pct_hisp) + ' percent Hispanic,'
     size = draw_and_size(draw,(x,y),text,light)
     
     y = add_a_line(y,size[1])
@@ -236,21 +275,28 @@ def demo_text(draw,coords,zipcode):
     return x,y
 
 
-def poverty_text(draw,coords,zipcode):
+def poverty_text(draw,coords,zipcode,esp):
     x = coords[0]
     y = coords[1]
-    text = "with a poverty rate of "
-    text += str(zipcode.pct_poverty) + ' percent.'
+    if esp:
+        text = "con una tasa de pobreza de "
+        text += str(zipcode.pct_poverty) + ' por ciento.'
+    else:
+        text = "with a poverty rate of "
+        text += str(zipcode.pct_poverty) + ' percent.'
 
     size = draw_and_size(draw,(x,y),text,light)
 
     return x,y
 
 
-def source_text(draw,coords):
+def source_text(draw,coords,esp):
     x = coords[0]
     y = map_height - source_size * 1.8 
-    text = "Sources: Illinois Department of Labor, U.S. Census Bureau"
+    if esp:
+        text = "Fuentes: Departamento de Trabajo de Illinois, Oficina del Censo de los Estados Unidos"
+    else:
+        text = "Sources: Illinois Department of Labor, U.S. Census Bureau"
     draw.text((x,y),text,font=source)
 
 
@@ -270,12 +316,19 @@ def optimize_map(path):
 
 
 def gifify_map(path=gif_file_name):
-    imgs = [Image.open(x) for x in glob.glob(output_dir + '*' + output_file_ext)]
+    esp_path = path.replace(output_file_ext,'_esp' + output_file_ext)
+    imgs = [Image.open(x) for x in glob.glob(output_dir + '*' + output_file_ext) if 'esp' not in x]
+    imgs_esp = [Image.open(x) for x in glob.glob(output_dir + '*' + output_file_ext) if 'esp' in x]
     # TODO: get rid of extraneous gif creation steps
     im = Image.new('P',(map_width,map_height))
+    im_esp = Image.new('P',(map_width,map_height))
 
     im.save(path,format="GIF",save_all=True,append_images=imgs,duration=5000,loop=0)
+    im_esp.save(esp_path,format="GIF",save_all=True,append_images=imgs,duration=5000,loop=0)
     # TODO: get rid of hacky way to delete extraneous frame
     im = Image.open(path)
+    im_esp = Image.open(esp_path)
     im.seek(1)
+    im_esp.seek(1)
     im.save(path,format="GIF",save_all=True,append_images=imgs,duration=5000,loop=0)
+    im_esp.save(esp_path,format="GIF",save_all=True,append_images=imgs_esp,duration=5000,loop=0)

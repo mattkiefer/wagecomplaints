@@ -6,7 +6,7 @@ import json, requests
 from census.models import Zip
 
 ### START CONFIG ###
-url =  'http://api.census.gov/data/2015/acs5/?get=NAME,B23025_002E&for=zip+code+tabulation+area:*&key=d182265a1eea731fd4de2ef89b9f2f0163c95822'
+url =  'http://api.census.gov/data/2015/acs5/?get=NAME,B23025_002E&for=zip+code+tabulation+area:*&key='
 ### END CONFIG ###
 
 s = requests.Session()
